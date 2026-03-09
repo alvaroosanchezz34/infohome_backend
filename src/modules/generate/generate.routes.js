@@ -1,9 +1,11 @@
-const express    = require('express');
-const { z }      = require('zod');
-const OpenAI     = require('openai');
+const express = require('express');
+const { z } = require('zod');
+const OpenAI = require('openai');
 const { authMiddleware } = require('../../middleware/auth.middleware');
-const User       = require('../auth/user.model');
+const User = require('../auth/user.model');
 const Generation = require('./generation.model');
+const { sendEmail } = require('../../services/email.service');
+const PLAN_NAMES = { free: 'Trial', starter: 'Starter', pro: 'Profesional', agency: 'Agencia' };
 
 const router = express.Router();
 
@@ -25,9 +27,12 @@ const checkAndIncrementUsage = async (user) => {
 
     const limit = user.generationLimit();
     if (user.monthlyGenerations >= limit) {
-        const err = new Error(`Has alcanzado el límite de ${limit} generaciones este mes. Actualiza tu plan para continuar.`);
-        err.statusCode = 429;
-        throw err;
+        sendEmail(user.email, 'limitReached', {
+            agencyName: user.agencyName,
+            plan: PLAN_NAMES[user.plan] || user.plan,
+            limit,
+        }).catch(() => { });
+        return res.status(403).json({ error: 'Has alcanzado tu límite mensual de generaciones' });
     }
 
     user.monthlyGenerations += 1;
@@ -38,9 +43,9 @@ const checkAndIncrementUsage = async (user) => {
 const buildPrompt = (input, tone) => {
     const toneMap = {
         profesional: 'profesional, claro y directo. Transmite confianza y seriedad.',
-        cercano:     'cercano y amigable, como si lo explicara un vecino de confianza.',
-        lujo:        'exclusivo y sofisticado, evocando calidad de vida premium.',
-        inversor:    'orientado al inversor: destaca rentabilidad, ubicación estratégica y potencial.',
+        cercano: 'cercano y amigable, como si lo explicara un vecino de confianza.',
+        lujo: 'exclusivo y sofisticado, evocando calidad de vida premium.',
+        inversor: 'orientado al inversor: destaca rentabilidad, ubicación estratégica y potencial.',
     };
     const toneDesc = toneMap[tone] || toneMap.profesional;
 
@@ -73,15 +78,15 @@ router.post('/', authMiddleware, async (req, res, next) => {
     try {
         // 1. Validar input
         const schema = z.object({
-            tipo:         z.string().min(1),
-            precio:       z.string().optional().default(''),
+            tipo: z.string().min(1),
+            precio: z.string().optional().default(''),
             habitaciones: z.string().optional().default(''),
-            banos:        z.string().optional().default(''),
-            metros:       z.string().optional().default(''),
-            zona:         z.string().min(1),
-            planta:       z.string().optional().default(''),
-            ascensor:     z.string().optional().default('Sí'),
-            extras:       z.string().optional().default(''),
+            banos: z.string().optional().default(''),
+            metros: z.string().optional().default(''),
+            zona: z.string().min(1),
+            planta: z.string().optional().default(''),
+            ascensor: z.string().optional().default('Sí'),
+            extras: z.string().optional().default(''),
         });
 
         const input = schema.parse(req.body);
@@ -133,7 +138,7 @@ router.post('/', authMiddleware, async (req, res, next) => {
             title,
             output,
             usage: {
-                used:  user.monthlyGenerations,
+                used: user.monthlyGenerations,
                 limit: user.generationLimit(),
             }
         });
@@ -155,15 +160,15 @@ const demoLimiter = require('express-rate-limit')({
 router.post('/demo', demoLimiter, async (req, res, next) => {
     try {
         const schema = z.object({
-            tipo:         z.string().min(1),
-            precio:       z.string().optional().default(''),
+            tipo: z.string().min(1),
+            precio: z.string().optional().default(''),
             habitaciones: z.string().optional().default('3'),
-            banos:        z.string().optional().default('2'),
-            metros:       z.string().optional().default('90'),
-            zona:         z.string().optional().default('Centro'),
-            planta:       z.string().optional().default('3ª'),
-            ascensor:     z.string().optional().default('Sí'),
-            extras:       z.string().optional().default(''),
+            banos: z.string().optional().default('2'),
+            metros: z.string().optional().default('90'),
+            zona: z.string().optional().default('Centro'),
+            planta: z.string().optional().default('3ª'),
+            ascensor: z.string().optional().default('Sí'),
+            extras: z.string().optional().default(''),
         });
 
         const input = schema.parse(req.body);

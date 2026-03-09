@@ -17,7 +17,9 @@
     "jsonwebtoken": "^9.0.2",
     "mongoose": "^8.4.1",
     "openai": "^4.52.0",
-    "stripe": "^16.2.0",
+    "resend": "^6.9.3",
+    "stripe": "^16.12.0",
+    "twilio": "^5.12.2",
     "zod": "^3.23.8"
   },
   "devDependencies": {

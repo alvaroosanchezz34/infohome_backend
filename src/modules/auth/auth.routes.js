@@ -4,6 +4,7 @@ const jwt = require('jsonwebtoken');
 const { z } = require('zod');
 const User = require('./user.model');
 const { authMiddleware } = require('../../middleware/auth.middleware');
+const { sendEmail } = require('../../services/email.service');
 
 const router = express.Router();
 
@@ -39,6 +40,10 @@ router.post('/register', async (req, res, next) => {
         });
 
         const token = signToken(user);
+        sendEmail(user.email, 'welcome', {
+            agencyName: user.agencyName,
+            trialDays: 14,
+        }).catch(err => console.error('[Email] Bienvenida falló:', err));
         res.status(201).json({
             success: true,
             token,

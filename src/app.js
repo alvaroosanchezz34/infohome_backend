@@ -6,8 +6,11 @@ const mongoose   = require('mongoose');
 const rateLimit  = require('express-rate-limit');
 
 const authRoutes     = require('./modules/auth/auth.routes');
+const adminRoutes = require('./modules/admin/admin.routes');
 const generateRoutes = require('./modules/generate/generate.routes');
 const historyRoutes  = require('./modules/history/history.routes');
+const stripeRoutes = require('./modules/stripe/stripe.routes');
+const whatsappRoutes = require('./modules/whatsapp/whatsapp.routes');
 
 const app  = express();
 const PORT = process.env.PORT || 3001;
@@ -33,12 +36,16 @@ const limiter = rateLimit({
 app.use('/api/', limiter);
 
 // ── Body parsing ──────────────────────────────────────────────────────────────
+app.use('/api/stripe/webhook', express.raw({ type: 'application/json' }));
 app.use(express.json({ limit: '10mb' }));
 
 // ── Routes ────────────────────────────────────────────────────────────────────
 app.use('/api/auth',     authRoutes);
 app.use('/api/generate', generateRoutes);
 app.use('/api/history',  historyRoutes);
+app.use('/api/admin', adminRoutes);
+app.use('/api/stripe', stripeRoutes);
+app.use('/api/whatsapp', whatsappRoutes);
 
 // ── Health check ──────────────────────────────────────────────────────────────
 app.get('/api/health', (req, res) => {
@@ -57,7 +64,8 @@ app.use((err, req, res, next) => {
 mongoose.connect(process.env.MONGODB_URI)
     .then(() => {
         console.log('✅ MongoDB conectado');
-        app.listen(PORT, () => console.log(`🚀 InfoHome API en puerto ${PORT}`));
+        require('./cron');
+        app.listen(PORT, () => console.log(`🚀 InfoHome API en puerto ${PORT}`) );
     })
     .catch(err => {
         console.error('❌ Error MongoDB:', err.message);
