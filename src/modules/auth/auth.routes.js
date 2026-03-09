@@ -1,14 +1,14 @@
-const express  = require('express');
-const bcrypt   = require('bcryptjs');
-const jwt      = require('jsonwebtoken');
-const { z }    = require('zod');
-const User     = require('./user.model');
+const express = require('express');
+const bcrypt = require('bcryptjs');
+const jwt = require('jsonwebtoken');
+const { z } = require('zod');
+const User = require('./user.model');
 const { authMiddleware } = require('../../middleware/auth.middleware');
 
 const router = express.Router();
 
 const signToken = (user) => jwt.sign(
-    { userId: user._id, plan: user.plan },
+    { userId: user._id, plan: user.plan, role: user.role },
     process.env.JWT_SECRET,
     { expiresIn: process.env.JWT_EXPIRES_IN || '7d' }
 );
@@ -17,11 +17,11 @@ const signToken = (user) => jwt.sign(
 router.post('/register', async (req, res, next) => {
     try {
         const schema = z.object({
-            email:      z.string().email(),
-            password:   z.string().min(6),
+            email: z.string().email(),
+            password: z.string().min(6),
             agencyName: z.string().optional(),
-            city:       z.string().optional(),
-            phone:      z.string().optional(),
+            city: z.string().optional(),
+            phone: z.string().optional(),
         });
 
         const data = schema.parse(req.body);
@@ -31,11 +31,11 @@ router.post('/register', async (req, res, next) => {
 
         const passwordHash = await bcrypt.hash(data.password, 10);
         const user = await User.create({
-            email:      data.email,
+            email: data.email,
             passwordHash,
             agencyName: data.agencyName || '',
-            city:       data.city || '',
-            phone:      data.phone || '',
+            city: data.city || '',
+            phone: data.phone || '',
         });
 
         const token = signToken(user);
@@ -43,10 +43,10 @@ router.post('/register', async (req, res, next) => {
             success: true,
             token,
             user: {
-                id:         user._id,
-                email:      user.email,
+                id: user._id,
+                email: user.email,
                 agencyName: user.agencyName,
-                plan:       user.plan,
+                plan: user.plan,
                 trialEndsAt: user.trialEndsAt,
             }
         });
@@ -73,12 +73,12 @@ router.post('/login', async (req, res, next) => {
             success: true,
             token,
             user: {
-                id:          user._id,
-                email:       user.email,
-                agencyName:  user.agencyName,
-                plan:        user.plan,
+                id: user._id,
+                email: user.email,
+                agencyName: user.agencyName,
+                plan: user.plan,
                 trialEndsAt: user.trialEndsAt,
-                agencyTone:  user.agencyTone,
+                agencyTone: user.agencyTone,
             }
         });
     } catch (err) { next(err); }
@@ -97,18 +97,20 @@ router.get('/me', authMiddleware, async (req, res, next) => {
         res.json({
             success: true,
             user: {
-                id:            user._id,
-                email:         user.email,
-                agencyName:    user.agencyName,
-                city:          user.city,
-                phone:         user.phone,
-                plan:          user.plan,
-                trialEndsAt:   user.trialEndsAt,
+                id: user._id,
+                email: user.email,
+                agencyName: user.agencyName,
+                city: user.city,
+                phone: user.phone,
+                plan: user.plan,
+                role: user.role,
+                isActive: user.isActive,
+                trialEndsAt: user.trialEndsAt,
                 trialDaysLeft,
-                hasAccess:     user.hasActiveAccess(),
-                agencyTone:    user.agencyTone,
+                hasAccess: user.hasActiveAccess(),
+                agencyTone: user.agencyTone,
                 monthlyGenerations: user.monthlyGenerations,
-                generationLimit:    user.generationLimit(),
+                generationLimit: user.generationLimit(),
             }
         });
     } catch (err) { next(err); }
@@ -120,8 +122,8 @@ router.patch('/profile', authMiddleware, async (req, res, next) => {
         const { agencyName, city, phone, agencyTone } = req.body;
         const update = {};
         if (agencyName !== undefined) update.agencyName = agencyName;
-        if (city       !== undefined) update.city       = city;
-        if (phone      !== undefined) update.phone      = phone;
+        if (city !== undefined) update.city = city;
+        if (phone !== undefined) update.phone = phone;
         if (agencyTone !== undefined) update.agencyTone = agencyTone;
 
         const user = await User.findByIdAndUpdate(req.userId, update, { new: true }).select('-passwordHash');
