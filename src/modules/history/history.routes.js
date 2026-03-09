@@ -1,6 +1,6 @@
 const express    = require('express');
 const mongoose   = require('mongoose');
-const authMiddleware = require('../../middleware/auth.middleware');
+const { authMiddleware } = require('../../middleware/auth.middleware');
 const Generation = require('../generate/generation.model');
 
 const router = express.Router();

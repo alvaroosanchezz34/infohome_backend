@@ -1,7 +1,7 @@
 const express    = require('express');
 const { z }      = require('zod');
 const OpenAI     = require('openai');
-const authMiddleware = require('../../middleware/auth.middleware');
+const { authMiddleware } = require('../../middleware/auth.middleware');
 const User       = require('../auth/user.model');
 const Generation = require('./generation.model');
 
